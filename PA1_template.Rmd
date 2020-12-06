@@ -1,0 +1,94 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+### Loading Library
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+## Loading and preprocessing the data
+```{r}
+activity <- read.csv("activity.csv", header=TRUE, sep=",")
+head(activity)
+```
+
+
+## What is mean total number of steps taken per day?
+```{r}
+# aggregate steps by date
+steps_per_day <- aggregate(steps~date, data=activity, sum, na.rm=TRUE)
+# make histogram
+qplot(steps_per_day$steps, binwidth=500, main="Total Number of steps taken per day", xlab="Steps", ylab="Frequency")
+# mean
+mean(steps_per_day$steps, na.rm=TRUE)
+# median
+median(steps_per_day$steps, na.rm=TRUE)
+```
+
+## What is the average daily activity pattern?
+```{r}
+# aggregate steps per interval
+steps_per_interval <- aggregate(steps~interval, data=activity, mean, na.rm=TRUE)
+head(steps_per_interval)
+# plot type="l"
+plot(steps_per_interval$interval, steps_per_interval$steps, type="l", lwd=2, xlab="interval", ylab="mean of steps", main="steps per interval")
+# maximum number of steps
+max(steps_per_interval$steps)
+```
+
+## Imputing missing values
+```{r}
+# sum of missing value
+sum(is.na(activity$steps))
+# make new activity dataset
+activity_imputed <- transform(activity, steps_imputed=steps)
+# check out new column added
+str(activity_imputed)
+
+# insert interval mean value
+activity_imputed$steps_imputed <- ifelse(is.na(activity_imputed$steps), round(steps_per_interval$steps[match(activity_imputed$interval, steps_per_interval$interval)],0), activity_imputed$steps)
+# data
+head(activity_imputed)
+# missing value count
+sum(is.na(activity_imputed$steps_imputed))
+
+# histogram by new data
+steps_per_day_nona <- aggregate(steps~date, data=activity_imputed, sum)
+qplot(steps_per_day_nona$steps, binwidth=500, main="Steps Per Day", xlab="Steps", ylab="Count")
+
+# average daily activity pattern
+steps_per_interval_nona <- aggregate(steps~interval, data=activity_imputed, mean)
+plot(steps_per_interval_nona$interval, steps_per_interval_nona$steps, type="l", lwd=2, xlab="interval", ylab="mean of steps", main="steps per interval")
+
+# new mean
+mean(steps_per_day_nona$steps)
+# new median
+median(steps_per_day_nona$steps)
+```
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+activity_imputed <- mutate(activity_imputed, date_t=as.Date(date))
+# set weekday in English
+Sys.setlocale("LC_TIME", "en_US")
+# add weekday  column
+activity_imputed <- mutate(activity_imputed, weekday=weekdays(date_t))
+# add weeday_type column ( weekend, weekday )
+activity_imputed <- mutate(activity_imputed, weekday_type=ifelse(weekday=='Saturday' | weekday=='Sunday', 'weekend', 'weekday'))
+# checkout
+head(activity_imputed)
+
+# aggregate
+steps_per_interval_weekday <- aggregate(steps~interval+weekday_type, data=activity_imputed, mean)
+
+# make plot
+ggplot(steps_per_interval_weekday, aes(x=interval,y=steps, color=weekday_type)) + geom_line() + labs(title="steps per interval(weekday)",x="interval", y="means of steps") + facet_wrap(~weekday_type, ncol=1, nrow=2)
+
+```
+
